@@ -33,35 +33,45 @@ To remove it:
 kpackagetool6 --type Plasma/Applet --remove org.smolam.pingacik
 ```
 
-## How the colours work
+## How the states work
 
 The widget sends one `ping -c 1` per interval and feeds each result into a hysteresis state machine.
 
-**It degrades immediately but recovers slowly.** Crossing a threshold changes the colour on the very
-next sample; returning to green requires `recoverAfter` consecutive good pings. A "good" ping got a
-reply *and* came back faster than the yellow latency threshold.
+The three states are **OK**, **Warning** and **Critical**.
+
+**It degrades immediately but recovers slowly.** Crossing a threshold changes the state on the very
+next sample; returning to OK requires `recoverAfter` consecutive good pings. A "good" ping got a
+reply *and* came back faster than the Warning latency threshold.
 
 | Trigger | Default |
 |---|---|
-| Yellow after N consecutive lost pings | 2 |
-| Red after N consecutive lost pings | 5 |
-| Yellow above | 150 ms |
-| Red above | 500 ms |
-| Back to green after N consecutive good pings | 5 |
+| Warning after N consecutive lost pings | 2 |
+| Critical after N consecutive lost pings | 5 |
+| Warning above | 150 ms |
+| Critical above | 500 ms |
+| Back to OK after N consecutive good pings | 5 |
 
 Packet loss and latency are evaluated separately and the worse of the two wins, so a link that
-delivers every packet but takes 800 ms still shows red. A single lost or slow ping never changes the
-colour — losses must be *consecutive*, and any reply resets the loss count.
+delivers every packet but takes 800 ms still reads Critical. A single lost or slow ping never
+changes the state — losses must be *consecutive*, and any reply resets the loss count.
 
 Latency reuses the same consecutive counts as packet loss rather than adding separate knobs, so one
-RTT spike is ignored while a sustained slowdown ramps yellow → red.
+RTT spike is ignored while a sustained slowdown ramps OK → Warning → Critical.
 
 ## Settings
 
 Right-click the widget → **Configure Pingacik…**
 
-**General** — target host (default `8.8.8.8`), ping interval, reply timeout, whether to show the
-latency text in the panel, and the chart range the popup opens with.
+**General** — target host (default `8.8.8.8`), ping interval and reply timeout.
+
+**Appearance** — whether to show the latency text in the panel, the chart range the popup opens
+with, and the three state colours.
+
+By default the colours come from your Plasma colour scheme (`positive`, `neutral` and `negative`
+text colours), so they follow light/dark theme switches automatically. Tick **Use custom colours**
+to pin your own for OK, Warning and Critical; a preview row shows the result before you apply. The
+chosen colours are used everywhere — the panel dot, the popup header, the log rows and the
+packet-loss bands on the chart.
 
 **Thresholds** — everything in the table above.
 
@@ -93,7 +103,7 @@ plasmoidviewer -a org.smolam.pingacik -f horizontal   # panel view
 
 All the non-visual logic lives in [`package/contents/code/pingstate.js`](package/contents/code/pingstate.js),
 which holds no QML types, so it runs under plain Node. The tests cover ping parsing, the hysteresis
-state machine, the ring buffer and chart downsampling.
+state machine, the sample cadence, the ring buffer and chart downsampling.
 
 Two things worth knowing when hacking on this:
 
@@ -118,6 +128,7 @@ package/
     ui/PingChart.qml              RTT chart + loss bands
     ui/StatusDot.qml              shared status circle
     ui/FigureLabel.qml            label with tabular figures
+    ui/config/                    General, Appearance and Thresholds pages
 tools/test-pingstate.js         standalone logic tests
 ```
 

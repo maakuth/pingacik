@@ -3,14 +3,14 @@
 // Pure data logic for Pingacik. Deliberately free of QML types so it can be
 // exercised standalone (see tools/test-pingstate.js).
 
-var GREEN = 0;
-var YELLOW = 1;
-var RED = 2;
+var OK = 0;
+var WARNING = 1;
+var CRITICAL = 2;
 
 // Sample verdicts
 var GOOD = 0;
-var SLOW_YELLOW = 1;
-var SLOW_RED = 2;
+var SLOW_WARNING = 1;
+var SLOW_CRITICAL = 2;
 var LOST = 3;
 
 /**
@@ -33,17 +33,17 @@ function parsePingOutput(stdout, exitCode, timestamp) {
 
 /**
  * Classify a single sample against the latency thresholds.
- * @returns one of GOOD / SLOW_YELLOW / SLOW_RED / LOST
+ * @returns one of GOOD / SLOW_WARNING / SLOW_CRITICAL / LOST
  */
 function classify(sample, cfg) {
     if (!sample.ok) {
         return LOST;
     }
     if (sample.rtt > cfg.redMs) {
-        return SLOW_RED;
+        return SLOW_CRITICAL;
     }
     if (sample.rtt > cfg.yellowMs) {
-        return SLOW_YELLOW;
+        return SLOW_WARNING;
     }
     return GOOD;
 }
@@ -51,10 +51,10 @@ function classify(sample, cfg) {
 /** A fresh state object for the hysteresis machine. */
 function initialState() {
     return {
-        status: GREEN,
+        status: OK,
         consecutiveLoss: 0,
-        consecutiveSlowYellow: 0,
-        consecutiveSlowRed: 0,
+        consecutiveSlowWarning: 0,
+        consecutiveSlowCritical: 0,
         consecutiveGood: 0
     };
 }
@@ -63,7 +63,7 @@ function initialState() {
  * Advance the hysteresis state machine by one sample.
  *
  * Degrade immediately, recover slowly: a worse verdict applies at once, but
- * returning to green requires `recoverAfter` consecutive fully-good samples.
+ * returning to OK requires `recoverAfter` consecutive fully-good samples.
  *
  * Mutates and returns `state`.
  */
@@ -77,37 +77,38 @@ function nextState(state, sample, cfg) {
         state.consecutiveLoss = 0;
     }
 
-    // A red-level sample also extends the yellow-level run: it is over both
-    // thresholds, so a slow link ramps yellow -> red rather than flapping.
-    if (verdict === SLOW_RED) {
-        state.consecutiveSlowRed++;
-        state.consecutiveSlowYellow++;
-    } else if (verdict === SLOW_YELLOW) {
-        state.consecutiveSlowRed = 0;
-        state.consecutiveSlowYellow++;
+    // A critical-level sample also extends the warning-level run: it is over
+    // both thresholds, so a slow link ramps OK -> Warning -> Critical rather
+    // than flapping.
+    if (verdict === SLOW_CRITICAL) {
+        state.consecutiveSlowCritical++;
+        state.consecutiveSlowWarning++;
+    } else if (verdict === SLOW_WARNING) {
+        state.consecutiveSlowCritical = 0;
+        state.consecutiveSlowWarning++;
     } else {
-        state.consecutiveSlowRed = 0;
-        state.consecutiveSlowYellow = 0;
+        state.consecutiveSlowCritical = 0;
+        state.consecutiveSlowWarning = 0;
     }
 
     state.consecutiveGood = (verdict === GOOD) ? state.consecutiveGood + 1 : 0;
 
-    var lossState = state.consecutiveLoss >= cfg.redAfter ? RED
-                  : state.consecutiveLoss >= cfg.yellowAfter ? YELLOW
-                  : GREEN;
+    var lossState = state.consecutiveLoss >= cfg.redAfter ? CRITICAL
+                  : state.consecutiveLoss >= cfg.yellowAfter ? WARNING
+                  : OK;
 
-    var latencyState = state.consecutiveSlowRed >= cfg.redAfter ? RED
-                     : state.consecutiveSlowYellow >= cfg.yellowAfter ? YELLOW
-                     : GREEN;
+    var latencyState = state.consecutiveSlowCritical >= cfg.redAfter ? CRITICAL
+                     : state.consecutiveSlowWarning >= cfg.yellowAfter ? WARNING
+                     : OK;
 
     var target = Math.max(lossState, latencyState);
 
     if (target > state.status) {
         // Worse than now: apply immediately.
         state.status = target;
-    } else if (state.status !== GREEN && state.consecutiveGood >= cfg.recoverAfter) {
-        // Better than now, and the link has proven itself: go straight to green.
-        state.status = GREEN;
+    } else if (state.status !== OK && state.consecutiveGood >= cfg.recoverAfter) {
+        // Better than now, and the link has proven itself: go straight to OK.
+        state.status = OK;
     }
     // Otherwise hold the current (degraded) status.
 
@@ -233,9 +234,9 @@ function stats(slice) {
 
 function statusName(status) {
     switch (status) {
-    case GREEN: return "online";
-    case YELLOW: return "degraded";
-    case RED: return "critical";
+    case OK: return "ok";
+    case WARNING: return "warning";
+    case CRITICAL: return "critical";
     }
     return "unknown";
 }

@@ -44,7 +44,7 @@ MouseArea {
             id: dot
             Layout.alignment: Qt.AlignVCenter
             statusColor: compact.widget.statusColor
-            pulsing: compact.widget.connectionStatus !== PingState.GREEN
+            pulsing: compact.widget.connectionStatus !== PingState.OK
 
             // Track the panel thickness, but never grow past what a small
             // icon would occupy.
@@ -69,7 +69,7 @@ MouseArea {
 
             color: compact.widget.lastOk || compact.widget.sampleCount === 0
                 ? Kirigami.Theme.textColor
-                : Kirigami.Theme.negativeTextColor
+                : compact.widget.colorCritical
 
             font.pixelSize: Math.max(
                 Kirigami.Theme.smallFont.pixelSize,

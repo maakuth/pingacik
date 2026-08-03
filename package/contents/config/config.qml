@@ -8,8 +8,13 @@ ConfigModel {
         source: "config/ConfigGeneral.qml"
     }
     ConfigCategory {
-        name: i18n("Thresholds")
+        name: i18n("Appearance")
         icon: "preferences-desktop-color"
+        source: "config/ConfigAppearance.qml"
+    }
+    ConfigCategory {
+        name: i18n("Thresholds")
+        icon: "dialog-warning"
         source: "config/ConfigThresholds.qml"
     }
 }

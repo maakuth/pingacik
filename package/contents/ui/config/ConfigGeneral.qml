@@ -11,8 +11,6 @@ Kirigami.FormLayout {
     property alias cfg_host: hostField.text
     property alias cfg_pingInterval: intervalBox.value
     property alias cfg_pingTimeout: timeoutBox.value
-    property alias cfg_showLatencyText: showTextBox.checked
-    property int cfg_defaultTimescale
 
     QQC2.TextField {
         id: hostField
@@ -57,31 +55,4 @@ Kirigami.FormLayout {
         wrapMode: Text.WordWrap
     }
 
-    Item { Kirigami.FormData.isSection: true }
-
-    QQC2.CheckBox {
-        id: showTextBox
-        Kirigami.FormData.label: i18n("Panel:")
-        text: i18n("Show latency next to the indicator")
-    }
-
-    QQC2.ComboBox {
-        id: timescaleBox
-        Kirigami.FormData.label: i18n("Default chart range:")
-
-        textRole: "label"
-        valueRole: "seconds"
-        model: [
-            { label: i18n("1 minute"),   seconds: 60 },
-            { label: i18n("5 minutes"),  seconds: 300 },
-            { label: i18n("15 minutes"), seconds: 900 },
-            { label: i18n("1 hour"),     seconds: 3600 }
-        ]
-
-        onActivated: page.cfg_defaultTimescale = currentValue
-
-        Component.onCompleted: {
-            currentIndex = indexOfValue(page.cfg_defaultTimescale);
-        }
-    }
 }

@@ -30,6 +30,28 @@
     </entry>
   </group>
 
+  <group name="Appearance">
+    <!-- Off by default so the indicator tracks the colour scheme, including
+         light/dark switches, rather than being pinned to fixed values. -->
+    <entry name="useCustomColors" type="Bool">
+      <default>false</default>
+    </entry>
+    <!-- Breeze positive/neutral/negative, so turning custom colours on starts
+         from what was already on screen instead of something jarring. -->
+    <entry name="okColor" type="Color">
+      <default>#27ae60</default>
+    </entry>
+    <entry name="warningColor" type="Color">
+      <default>#f67400</default>
+    </entry>
+    <entry name="criticalColor" type="Color">
+      <default>#da4453</default>
+    </entry>
+  </group>
+
+  <!-- These keys keep their original names. The user-facing labels are now
+       OK / Warning / Critical, but renaming the keys would silently reset
+       every threshold anyone had already configured. -->
   <group name="Thresholds">
     <entry name="yellowAfter" type="Int">
       <default>2</default>

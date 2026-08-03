@@ -15,9 +15,10 @@ const src = fs.readFileSync(
 
 const P = {};
 (new Function('exports', src + `
-    exports.GREEN = GREEN; exports.YELLOW = YELLOW; exports.RED = RED;
-    exports.GOOD = GOOD; exports.SLOW_YELLOW = SLOW_YELLOW;
-    exports.SLOW_RED = SLOW_RED; exports.LOST = LOST;
+    exports.OK = OK; exports.WARNING = WARNING; exports.CRITICAL = CRITICAL;
+    exports.GOOD = GOOD; exports.SLOW_WARNING = SLOW_WARNING;
+    exports.SLOW_CRITICAL = SLOW_CRITICAL; exports.LOST = LOST;
+    exports.statusName = statusName;
     exports.parsePingOutput = parsePingOutput;
     exports.classify = classify;
     exports.initialState = initialState;
@@ -67,24 +68,25 @@ console.log('\nparsePingOutput');
 console.log('\nclassify');
 {
     eq('fast reply is GOOD', P.classify({ ok: true, rtt: 20 }, CFG), P.GOOD);
-    eq('at yellow threshold is GOOD', P.classify({ ok: true, rtt: 150 }, CFG), P.GOOD);
-    eq('over yellow is SLOW_YELLOW', P.classify({ ok: true, rtt: 151 }, CFG), P.SLOW_YELLOW);
-    eq('over red is SLOW_RED', P.classify({ ok: true, rtt: 501 }, CFG), P.SLOW_RED);
+    eq('at warning threshold is GOOD', P.classify({ ok: true, rtt: 150 }, CFG), P.GOOD);
+    eq('over warning is SLOW_WARNING', P.classify({ ok: true, rtt: 151 }, CFG), P.SLOW_WARNING);
+    eq('over critical is SLOW_CRITICAL', P.classify({ ok: true, rtt: 501 }, CFG), P.SLOW_CRITICAL);
     eq('timeout is LOST', P.classify({ ok: false, rtt: -1 }, CFG), P.LOST);
 }
 
-// Drive the machine with a compact string: '.' = good reply, 'x' = timeout,
-// 'y' = slow (yellow band), 'r' = very slow (red band).
+// Drive the machine with a compact string. Input: '.' = good reply,
+// 'x' = timeout, 'w' = slow (over the warning threshold), 'c' = very slow
+// (over the critical one). Output: O = OK, W = Warning, C = Critical.
 function run(seq, cfg) {
     const st = P.initialState();
     let out = '';
     for (const ch of seq) {
         const sample = ch === 'x' ? { ok: false, rtt: -1 }
-                     : ch === 'y' ? { ok: true, rtt: 200 }
-                     : ch === 'r' ? { ok: true, rtt: 900 }
+                     : ch === 'w' ? { ok: true, rtt: 200 }
+                     : ch === 'c' ? { ok: true, rtt: 900 }
                      : { ok: true, rtt: 20 };
         P.nextState(st, sample, cfg || CFG);
-        out += 'GYR'[st.status];
+        out += 'OWC'[st.status];
     }
     return out;
 }
@@ -92,32 +94,39 @@ function run(seq, cfg) {
 console.log('\nhysteresis - loss');
 {
     // yellowAfter=2, redAfter=5, recoverAfter=5
-    eq('all good stays green', run('.......'), 'GGGGGGG');
-    eq('one loss not enough for yellow', run('..x..'), 'GGGGG');
-    eq('two consecutive losses -> yellow', run('..xx'), 'GGGY');
-    eq('five consecutive losses -> red', run('xxxxx'), 'GYYYR');
+    eq('all good stays OK', run('.......'), 'OOOOOOO');
+    eq('one loss not enough for warning', run('..x..'), 'OOOOO');
+    eq('two consecutive losses -> warning', run('..xx'), 'OOOW');
+    eq('five consecutive losses -> critical', run('xxxxx'), 'OWWWC');
     // Recovery requires recoverAfter=5 consecutive good samples, NOT one.
-    eq('single success does not clear yellow', run('..xx.'), 'GGGYY');
-    eq('recovers only on the 5th good sample', run('..xx.....'), 'GGGYYYYYG');
+    eq('single success does not clear warning', run('..xx.'), 'OOOWW');
+    eq('recovers only on the 5th good sample', run('..xx.....'), 'OOOWWWWWO');
     eq('a loss during recovery restarts the count',
-       run('..xx...x.....'), 'GGGYYYYYYYYYG');
+       run('..xx...x.....'), 'OOOWWWWWWWWWO');
 }
 
 console.log('\nhysteresis - latency');
 {
-    eq('two slow samples -> yellow', run('..yy'), 'GGGY');
-    eq('slow ramps yellow then red', run('rrrrr'), 'GYYYR');
-    eq('one slow sample is tolerated', run('..y..'), 'GGGGG');
-    eq('slow recovery honours recoverAfter', run('..yy.....'), 'GGGYYYYYG');
+    eq('two slow samples -> warning', run('..ww'), 'OOOW');
+    eq('slow ramps warning then critical', run('ccccc'), 'OWWWC');
+    eq('one slow sample is tolerated', run('..w..'), 'OOOOO');
+    eq('slow recovery honours recoverAfter', run('..ww.....'), 'OOOWWWWWO');
     // Latency must degrade with zero packet loss.
-    check('latency degrades without any loss', run('yyyyy').includes('Y'));
+    check('latency degrades without any loss', run('wwwww').includes('W'));
 }
 
 console.log('\nhysteresis - worst-of');
 {
-    // Losses and slowness interleaved: neither alone reaches red, but the
+    // Losses and slowness interleaved: neither alone reaches critical, but the
     // machine must not silently recover mid-run.
-    eq('mixed degradation holds', run('..xxyy'), 'GGGYYY');
+    eq('mixed degradation holds', run('..xxww'), 'OOOWWW');
+}
+
+console.log('\nstatusName');
+{
+    eq('ok', P.statusName(P.OK), 'ok');
+    eq('warning', P.statusName(P.WARNING), 'warning');
+    eq('critical', P.statusName(P.CRITICAL), 'critical');
 }
 
 console.log('\nnextDelay (sample cadence)');

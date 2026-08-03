@@ -24,7 +24,7 @@ PlasmoidItem {
     // ---- live state ---------------------------------------------------
     // Named connectionStatus rather than status to keep it clearly distinct
     // from Plasmoid.status, which means something else entirely.
-    property int connectionStatus: PingState.GREEN
+    property int connectionStatus: PingState.OK
     property real lastRtt: -1
     property bool lastOk: false
     property int sampleCount: 0
@@ -47,18 +47,32 @@ PlasmoidItem {
 
     readonly property string statusText: {
         switch (connectionStatus) {
-        case PingState.GREEN: return i18n("Online");
-        case PingState.YELLOW: return i18n("Degraded");
-        case PingState.RED: return i18n("Critical");
+        case PingState.OK: return i18n("OK");
+        case PingState.WARNING: return i18n("Warning");
+        case PingState.CRITICAL: return i18n("Critical");
         }
         return i18n("Unknown");
     }
 
+    // The three state colours, resolved once here so the panel dot, the popup
+    // header, the log rows and the chart bands all agree. Following the colour
+    // scheme by default means the widget tracks light/dark switches; custom
+    // colours are a deliberate opt-out of that.
+    readonly property color colorOk: Plasmoid.configuration.useCustomColors
+        ? Plasmoid.configuration.okColor
+        : Kirigami.Theme.positiveTextColor
+    readonly property color colorWarning: Plasmoid.configuration.useCustomColors
+        ? Plasmoid.configuration.warningColor
+        : Kirigami.Theme.neutralTextColor
+    readonly property color colorCritical: Plasmoid.configuration.useCustomColors
+        ? Plasmoid.configuration.criticalColor
+        : Kirigami.Theme.negativeTextColor
+
     readonly property color statusColor: {
         switch (connectionStatus) {
-        case PingState.GREEN: return Kirigami.Theme.positiveTextColor;
-        case PingState.YELLOW: return Kirigami.Theme.neutralTextColor;
-        case PingState.RED: return Kirigami.Theme.negativeTextColor;
+        case PingState.OK: return colorOk;
+        case PingState.WARNING: return colorWarning;
+        case PingState.CRITICAL: return colorCritical;
         }
         return Kirigami.Theme.disabledTextColor;
     }
@@ -179,7 +193,7 @@ PlasmoidItem {
         samples = [];
         machine = PingState.initialState();
         logModel.clear();
-        connectionStatus = PingState.GREEN;
+        connectionStatus = PingState.OK;
         lastRtt = -1;
         lastOk = false;
         sampleCount = 0;
@@ -234,7 +248,7 @@ PlasmoidItem {
     }
 
     // Keep the widget visible in the systray overflow while anything is wrong.
-    Plasmoid.status: connectionStatus === PingState.GREEN
+    Plasmoid.status: connectionStatus === PingState.OK
         ? PlasmaCore.Types.PassiveStatus
         : PlasmaCore.Types.ActiveStatus
 

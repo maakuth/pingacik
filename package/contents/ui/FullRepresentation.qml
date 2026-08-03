@@ -33,7 +33,7 @@ PlasmaExtras.Representation {
                 StatusDot {
                     Layout.alignment: Qt.AlignVCenter
                     statusColor: full.widget.statusColor
-                    pulsing: full.widget.connectionStatus !== PingState.GREEN
+                    pulsing: full.widget.connectionStatus !== PingState.OK
                 }
 
                 PlasmaComponents.Label {
@@ -61,7 +61,7 @@ PlasmaExtras.Representation {
                     font.weight: Font.Bold
                     color: full.widget.lastOk
                         ? Kirigami.Theme.textColor
-                        : Kirigami.Theme.negativeTextColor
+                        : full.widget.colorCritical
                     font.features: ({ "tnum": 1 })
                 }
             }
@@ -157,15 +157,17 @@ PlasmaExtras.Representation {
                                    full.widget.host, logRow.model.rtt.toFixed(1))
                             : i18n("no reply from %1", full.widget.host)
 
+                        // Same thresholds the state machine uses, so a row's
+                        // colour matches the verdict that sample contributed.
                         color: {
                             if (!logRow.model.ok) {
-                                return Kirigami.Theme.negativeTextColor;
+                                return full.widget.colorCritical;
                             }
                             if (logRow.model.rtt > Plasmoid.configuration.redMs) {
-                                return Kirigami.Theme.negativeTextColor;
+                                return full.widget.colorCritical;
                             }
                             if (logRow.model.rtt > Plasmoid.configuration.yellowMs) {
-                                return Kirigami.Theme.neutralTextColor;
+                                return full.widget.colorWarning;
                             }
                             return Kirigami.Theme.textColor;
                         }

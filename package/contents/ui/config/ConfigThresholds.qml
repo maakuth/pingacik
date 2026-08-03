@@ -14,7 +14,7 @@ Kirigami.FormLayout {
 
     QQC2.Label {
         Layout.maximumWidth: Kirigami.Units.gridUnit * 20
-        text: i18n("The indicator turns yellow or red as soon as a threshold is crossed, but only returns to green after the link has proven itself again.")
+        text: i18n("The indicator drops to Warning or Critical as soon as a threshold is crossed, but only returns to OK after the link has proven itself again.")
         wrapMode: Text.WordWrap
         opacity: 0.8
     }
@@ -23,7 +23,7 @@ Kirigami.FormLayout {
 
     QQC2.SpinBox {
         id: yellowAfterBox
-        Kirigami.FormData.label: i18n("Yellow after:")
+        Kirigami.FormData.label: i18n("Warning after:")
         from: 1
         to: 100
         textFromValue: (value) => i18np("%1 lost ping", "%1 lost pings", value)
@@ -32,7 +32,7 @@ Kirigami.FormLayout {
 
     QQC2.SpinBox {
         id: redAfterBox
-        Kirigami.FormData.label: i18n("Red after:")
+        Kirigami.FormData.label: i18n("Critical after:")
         from: 1
         to: 100
         textFromValue: (value) => i18np("%1 lost ping", "%1 lost pings", value)
@@ -50,7 +50,7 @@ Kirigami.FormLayout {
     QQC2.Label {
         Layout.maximumWidth: Kirigami.Units.gridUnit * 20
         visible: redAfterBox.value <= yellowAfterBox.value
-        text: i18n("Red triggers at or before yellow, so the indicator will never show yellow for packet loss.")
+        text: i18n("Critical triggers at or before Warning, so the indicator will never show Warning for packet loss.")
         font: Kirigami.Theme.smallFont
         color: Kirigami.Theme.neutralTextColor
         wrapMode: Text.WordWrap
@@ -60,7 +60,7 @@ Kirigami.FormLayout {
 
     QQC2.SpinBox {
         id: yellowMsBox
-        Kirigami.FormData.label: i18n("Yellow above:")
+        Kirigami.FormData.label: i18n("Warning above:")
         from: 1
         to: 100000
         stepSize: 10
@@ -70,7 +70,7 @@ Kirigami.FormLayout {
 
     QQC2.SpinBox {
         id: redMsBox
-        Kirigami.FormData.label: i18n("Red above:")
+        Kirigami.FormData.label: i18n("Critical above:")
         from: 1
         to: 100000
         stepSize: 10
@@ -89,7 +89,7 @@ Kirigami.FormLayout {
     QQC2.Label {
         Layout.maximumWidth: Kirigami.Units.gridUnit * 20
         visible: redMsBox.value <= yellowMsBox.value
-        text: i18n("The red latency threshold is not above the yellow one.")
+        text: i18n("The Critical latency threshold is not above the Warning one.")
         font: Kirigami.Theme.smallFont
         color: Kirigami.Theme.neutralTextColor
         wrapMode: Text.WordWrap
@@ -99,7 +99,7 @@ Kirigami.FormLayout {
 
     QQC2.SpinBox {
         id: recoverAfterBox
-        Kirigami.FormData.label: i18n("Back to green after:")
+        Kirigami.FormData.label: i18n("Back to OK after:")
         from: 1
         to: 100
         textFromValue: (value) => i18np("%1 good ping", "%1 good pings", value)
@@ -108,7 +108,7 @@ Kirigami.FormLayout {
 
     QQC2.Label {
         Layout.maximumWidth: Kirigami.Units.gridUnit * 20
-        text: i18n("Consecutive replies that are neither lost nor slower than the yellow latency threshold.")
+        text: i18n("Consecutive replies that are neither lost nor slower than the Warning latency threshold.")
         font: Kirigami.Theme.smallFont
         opacity: 0.7
         wrapMode: Text.WordWrap

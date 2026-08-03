@@ -143,7 +143,7 @@ ColumnLayout {
                     width: Math.max(1, slot)
                     height: plotArea.height
 
-                    color: Kirigami.Theme.negativeTextColor
+                    color: chartRoot.widget.colorCritical
                     // Partially-lost buckets fade in proportion to how bad they
                     // were, so one drop stays visible while a sustained outage
                     // is unmistakable.
