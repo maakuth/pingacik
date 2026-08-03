@@ -14,9 +14,9 @@
       <min>1</min>
       <max>60</max>
     </entry>
-    <!-- Kept equal to pingInterval by default: a timeout longer than the
-         interval blocks the following ticks, which thins out the sample rate
-         exactly when the link is in trouble and samples matter most. -->
+    <!-- Only one ping is ever in flight, so while the link is down this is
+         what bounds the sample rate: an unanswered ping cannot be counted
+         until it times out. Kept equal to pingInterval by default. -->
     <entry name="pingTimeout" type="Int">
       <default>1</default>
       <min>1</min>

@@ -22,6 +22,7 @@ const P = {};
     exports.classify = classify;
     exports.initialState = initialState;
     exports.nextState = nextState;
+    exports.nextDelay = nextDelay;
     exports.push = push;
     exports.windowSlice = windowSlice;
     exports.downsample = downsample;
@@ -117,6 +118,31 @@ console.log('\nhysteresis - worst-of');
     // Losses and slowness interleaved: neither alone reaches red, but the
     // machine must not silently recover mid-run.
     eq('mixed degradation holds', run('..xxyy'), 'GGGYYY');
+}
+
+console.log('\nnextDelay (sample cadence)');
+{
+    const MIN = 50;
+    // Scheduling from the *start* of the previous ping keeps the cadence flat:
+    // delay + elapsed == interval, whatever the round-trip time was.
+    eq('fast reply waits out the remainder', P.nextDelay(1000, 20, MIN), 980);
+    eq('slower reply waits less', P.nextDelay(1000, 300, MIN), 700);
+    check('cadence is exactly the interval',
+          [5, 20, 300, 800, 950].every(rtt => rtt + P.nextDelay(1000, rtt, MIN) === 1000));
+
+    // The outage case this scheduler exists for: at the defaults an
+    // unanswered ping burns the full 1 s timeout. A free-running repeating
+    // timer would have its 1 s tick swallowed and only fire at 2 s.
+    eq('ping that used the whole interval retries after the min gap',
+       P.nextDelay(1000, 1000, MIN), MIN);
+    eq('outage cadence is timeout + min gap, not 2x interval',
+       1000 + P.nextDelay(1000, 1000, MIN), 1050);
+
+    // A timeout longer than the interval bounds the rate, but must not wedge
+    // it or produce a negative delay.
+    eq('overrunning ping still gets a gap', P.nextDelay(1000, 5000, MIN), MIN);
+    check('delay is never below the minimum gap',
+          [0, 999, 1000, 1001, 60000].every(e => P.nextDelay(1000, e, MIN) >= MIN));
 }
 
 console.log('\nring buffer');

@@ -74,6 +74,11 @@ PlasmoidItem {
     }
 
     property bool busy: false
+    property double lastStart: 0
+
+    // Never fire two pings back to back with no gap at all, even when the
+    // previous one overran the interval completely.
+    readonly property int minGapMs: 50
 
     P5Support.DataSource {
         id: executable
@@ -85,31 +90,62 @@ PlasmoidItem {
             // changes, so it must be disconnected before the next run or no
             // further data arrives.
             disconnectSource(sourceName);
-            root.busy = false;
 
-            const sample = PingState.parsePingOutput(
-                data["stdout"], data["exit code"], Date.now());
-            root.recordSample(sample);
+            // Dropped by the watchdog already: ignore the late arrival rather
+            // than attributing it to whatever request is outstanding now.
+            if (!root.busy) {
+                return;
+            }
+            root.busy = false;
+            watchdog.stop();
+
+            root.recordSample(PingState.parsePingOutput(
+                data["stdout"], data["exit code"], Date.now()));
+            root.scheduleNext();
         }
     }
 
+    // Single-shot and rescheduled after every result, rather than free-running.
+    // A repeating timer would have its ticks swallowed while a ping is still
+    // outstanding, so during an outage — when each ping burns the full timeout
+    // — the sample rate would collapse to a multiple of the interval just when
+    // samples matter most. Measuring from completion keeps the cadence at the
+    // configured interval whenever the timeout allows it.
     Timer {
         id: pingTimer
-        interval: root.pingInterval * 1000
-        repeat: true
-        running: true
-        triggeredOnStart: true
+        repeat: false
         onTriggered: root.doPing()
     }
 
+    // The executable engine should always report back, since the process
+    // exits either way. If it ever does not, this keeps the widget measuring
+    // instead of silently freezing on the last known state.
+    Timer {
+        id: watchdog
+        interval: (root.pingTimeout + 5) * 1000
+        repeat: false
+        onTriggered: {
+            executable.connectedSources = [];
+            root.busy = false;
+            root.recordSample({ ok: false, rtt: -1, t: Date.now() });
+            root.scheduleNext();
+        }
+    }
+
     function doPing() {
-        // Skip this tick if the previous ping is still outstanding, so a slow
-        // link cannot pile up requests when pingTimeout >= pingInterval.
         if (busy) {
             return;
         }
         busy = true;
+        lastStart = Date.now();
+        watchdog.restart();
         executable.connectSource(pingCommand);
+    }
+
+    function scheduleNext() {
+        pingTimer.interval = PingState.nextDelay(
+            pingInterval * 1000, Date.now() - lastStart, minGapMs);
+        pingTimer.restart();
     }
 
     function recordSample(sample) {
@@ -161,13 +197,20 @@ PlasmoidItem {
 
     function restartSampler() {
         pingTimer.stop();
+        watchdog.stop();
         // Drop any in-flight request so its result is not attributed to the
-        // new target.
-        executable.connectedSources = [];
+        // new target. Clearing busy first also makes onNewData discard it if
+        // the engine reports back anyway.
         busy = false;
+        executable.connectedSources = [];
         resetHistory();
-        pingTimer.start();
+        doPing();
     }
+
+    // The timer no longer free-runs, so the first ping needs an explicit kick.
+    // Guarded by `busy`, so this is harmless if a configuration change already
+    // started one during initialisation.
+    Component.onCompleted: doPing()
 
     // Backs the popup log. Kept separate from `samples` because the view
     // wants a real model, while the chart wants a plain array.

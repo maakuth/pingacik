@@ -114,6 +114,21 @@ function nextState(state, sample, cfg) {
     return state;
 }
 
+/**
+ * How long to wait before starting the next ping, measured from when the
+ * previous one *started* rather than when it finished.
+ *
+ * This keeps the cadence at `intervalMs` regardless of how long a reply took,
+ * instead of drifting by the round-trip time on every sample. When a ping
+ * overruns the interval — which is what happens during an outage, where every
+ * ping burns the full timeout — the next one follows after `minGapMs`, so the
+ * sample rate degrades to the timeout rather than collapsing to a multiple of
+ * the interval.
+ */
+function nextDelay(intervalMs, elapsedMs, minGapMs) {
+    return Math.max(minGapMs, intervalMs - elapsedMs);
+}
+
 /** Append to a ring buffer capped at `cap` entries. Mutates and returns it. */
 function push(buffer, sample, cap) {
     buffer.push(sample);

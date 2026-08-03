@@ -51,7 +51,7 @@ Kirigami.FormLayout {
     QQC2.Label {
         Layout.maximumWidth: Kirigami.Units.gridUnit * 18
         visible: timeoutBox.value > intervalBox.value
-        text: i18n("The timeout is longer than the interval, so each unanswered ping will skip the ticks that fall inside it — measurements thin out exactly while the connection is failing.")
+        text: i18n("The timeout is longer than the interval. Only one ping is in flight at a time, so while the connection is down samples can only arrive as fast as the timeout — the thresholds below will take correspondingly longer to trigger.")
         font: Kirigami.Theme.smallFont
         color: Kirigami.Theme.neutralTextColor
         wrapMode: Text.WordWrap

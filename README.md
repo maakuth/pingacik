@@ -74,13 +74,13 @@ comparable.
   the widget or plasmashell restarts. Nothing is written to disk.
 - The chart downsamples to ~300 buckets, so the 1 h view stays responsive. Buckets containing lost
   packets are shaded red in proportion to how many were lost.
-- If a ping has not returned by the time the next tick fires, that tick is skipped rather than
-  queued, so a stalled link cannot pile up processes. This is why the reply timeout defaults to the
-  same value as the interval: a longer timeout thins out the sample rate precisely while the
-  connection is failing.
-- Thresholds are counted in pings, not seconds. During an outage each lost ping costs a full timeout
-  before it registers, so samples arrive roughly every 2 s rather than every 1 s while the link is
-  down — "red after 5 lost pings" is about 10 s of wall clock at the defaults.
+- Only one ping is ever in flight. The next one is scheduled from when the last one *started*, so a
+  reply that took 300 ms is followed 700 ms later — the cadence holds at the configured interval
+  instead of drifting, and a stalled link cannot pile up processes.
+- Thresholds are counted in pings, not seconds. While the link is down, an unanswered ping cannot be
+  counted until it times out, so the reply timeout is what bounds the sample rate during an outage.
+  That is why it defaults to the same value as the interval: raising it makes every threshold below
+  take correspondingly longer to trigger.
 - Dropped on the desktop rather than a panel, the widget shows the full view directly.
 
 ## Development
