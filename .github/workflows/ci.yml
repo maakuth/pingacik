@@ -11,10 +11,10 @@ jobs:
     name: Logic tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
       - name: Run pingstate tests
         run: node tools/test-pingstate.js
 
@@ -22,12 +22,28 @@ jobs:
     name: Syntax and metadata
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install QML tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y qt6-declarative-dev-tools
+
+      # Debian ships these under /usr/lib/<triplet>/qt6/bin, which is not on
+      # PATH; Fedora suffixes them with -qt6. Resolve rather than assume.
+      - name: Locate qmlformat
+        run: |
+          qmlformat=$(command -v qmlformat qmlformat-qt6 2>/dev/null | head -1 || true)
+          if [ -z "$qmlformat" ]; then
+            qmlformat=$(find /usr/lib /usr/lib64 -name 'qmlformat' -type f 2>/dev/null | head -1)
+          fi
+          if [ -z "$qmlformat" ]; then
+            echo "could not find qmlformat in:"
+            find /usr/lib /usr/lib64 -name 'qml*' -type f 2>/dev/null | head -20
+            exit 1
+          fi
+          echo "found: $qmlformat"
+          echo "QMLFORMAT=$qmlformat" >> "$GITHUB_ENV"
 
       # qmlformat parses without resolving imports, so this catches syntax
       # errors without needing the Plasma/Kirigami QML modules on the runner.
@@ -35,7 +51,7 @@ jobs:
         run: |
           status=0
           while IFS= read -r f; do
-            if qmlformat "$f" > /dev/null; then
+            if "$QMLFORMAT" "$f" > /dev/null; then
               echo "ok   $f"
             else
               echo "FAIL $f"
