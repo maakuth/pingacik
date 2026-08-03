@@ -1,0 +1,16 @@
+# Build / packaging artefacts
+*.plasmoid
+*.tar.gz
+*.zip
+
+# Editor / OS noise
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Qt / QML caches
+.qmlls.ini
+*.qmlc
+*.jsc

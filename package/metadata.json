@@ -1,0 +1,26 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "smolamSK",
+                "Website": "https://github.com/smolamSK"
+            }
+        ],
+        "BugReportUrl": "https://github.com/smolamSK/pingacik/issues",
+        "Category": "Network",
+        "Description": "Monitors internet connection quality by pinging a host",
+        "EnabledByDefault": true,
+        "Icon": "network-connect",
+        "Id": "org.smolam.pingacik",
+        "License": "GPL-3.0-or-later",
+        "Name": "Pingacik",
+        "Version": "1.0",
+        "Website": "https://github.com/smolamSK/pingacik"
+    },
+    "X-Plasma-API": "declarativeappletscript",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-MainScript": "ui/main.qml",
+    "X-Plasma-NotificationArea": "true",
+    "X-Plasma-NotificationAreaCategory": "Hardware"
+}

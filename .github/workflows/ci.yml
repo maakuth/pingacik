@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  logic:
+    name: Logic tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run pingstate tests
+        run: node tools/test-pingstate.js
+
+  lint:
+    name: Syntax and metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QML tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-declarative-dev-tools
+
+      # qmlformat parses without resolving imports, so this catches syntax
+      # errors without needing the Plasma/Kirigami QML modules on the runner.
+      - name: Check QML syntax
+        run: |
+          status=0
+          while IFS= read -r f; do
+            if qmlformat "$f" > /dev/null; then
+              echo "ok   $f"
+            else
+              echo "FAIL $f"
+              status=1
+            fi
+          done < <(find package -name '*.qml')
+          exit $status
+
+      - name: Validate metadata.json
+        run: python3 -c "import json; json.load(open('package/metadata.json'))"
+
+      - name: Validate config schema
+        run: python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('package/contents/config/main.xml')"
+
+      - name: Check the applet id matches everywhere
+        run: |
+          id=$(python3 -c "import json; print(json.load(open('package/metadata.json'))['KPlugin']['Id'])")
+          echo "metadata.json id: $id"
+          grep -q "$id" install.sh || { echo "install.sh does not reference $id"; exit 1; }
+
+      - name: Shellcheck
+        run: shellcheck install.sh

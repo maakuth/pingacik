@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd" >
+  <kcfgfile name=""/>
+
+  <group name="General">
+    <entry name="host" type="String">
+      <default>8.8.8.8</default>
+    </entry>
+    <entry name="pingInterval" type="Int">
+      <default>1</default>
+      <min>1</min>
+      <max>60</max>
+    </entry>
+    <!-- Kept equal to pingInterval by default: a timeout longer than the
+         interval blocks the following ticks, which thins out the sample rate
+         exactly when the link is in trouble and samples matter most. -->
+    <entry name="pingTimeout" type="Int">
+      <default>1</default>
+      <min>1</min>
+      <max>60</max>
+    </entry>
+    <entry name="showLatencyText" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="defaultTimescale" type="Int">
+      <default>300</default>
+    </entry>
+  </group>
+
+  <group name="Thresholds">
+    <entry name="yellowAfter" type="Int">
+      <default>2</default>
+      <min>1</min>
+    </entry>
+    <entry name="redAfter" type="Int">
+      <default>5</default>
+      <min>1</min>
+    </entry>
+    <entry name="recoverAfter" type="Int">
+      <default>5</default>
+      <min>1</min>
+    </entry>
+    <entry name="yellowMs" type="Int">
+      <default>150</default>
+      <min>1</min>
+    </entry>
+    <entry name="redMs" type="Int">
+      <default>500</default>
+      <min>1</min>
+    </entry>
+  </group>
+
+</kcfg>
