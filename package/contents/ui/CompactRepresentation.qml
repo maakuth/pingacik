@@ -14,14 +14,18 @@ MouseArea {
 
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
 
-    // The latency readout is the first thing to go when space runs out: on a
-    // vertical panel there is no room beside the dot, and on a narrow
-    // horizontal one the text would be clipped to uselessness.
+    // A vertical panel has no room beside the dot, so the readout only makes
+    // sense laid out horizontally.
+    //
+    // This deliberately does not test the current width: `width` is driven by
+    // Layout.preferredWidth below, which comes from the row's implicit width,
+    // which excludes the label while it is hidden. Gating visibility on that
+    // width latches the label off permanently — it can never become wide
+    // enough to allow the thing that would make it wide enough. Instead the
+    // applet asks the panel for the room it needs and the label elides if the
+    // panel cannot grant it.
     readonly property bool showText:
-        Plasmoid.configuration.showLatencyText
-        && !vertical
-        && width >= dot.implicitWidth + label.implicitWidth
-                    + Kirigami.Units.smallSpacing * 3
+        Plasmoid.configuration.showLatencyText && !vertical
 
     Layout.minimumWidth: vertical ? 0 : layout.implicitWidth
     Layout.minimumHeight: vertical ? layout.implicitHeight : 0
@@ -71,6 +75,10 @@ MouseArea {
                 Kirigami.Theme.smallFont.pixelSize,
                 Math.min(Kirigami.Theme.defaultFont.pixelSize, compact.height * 0.5))
             font.features: ({ "tnum": 1 })  // stop the width jittering per digit
+
+            // Only bites if the panel hands us less than we asked for; the
+            // readout then shortens instead of spilling past the applet.
+            elide: Text.ElideRight
         }
     }
 }
