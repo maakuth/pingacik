@@ -273,6 +273,24 @@ function downsample(slice, targetPoints) {
     return out;
 }
 
+/**
+ * Is a scrolled view close enough to its bottom to count as following it?
+ *
+ * `tolerance` is slack in pixels — about a row — so returning to the bottom
+ * does not mean landing on the last pixel exactly.
+ *
+ * The short-content case is explicit because leaving it out is what broke the
+ * log: with nothing to scroll, `contentHeight - viewHeight` goes negative and
+ * the bare comparison happens to be true, so following worked while the popup
+ * held only a few rows and stopped the moment it held more than a screenful.
+ */
+function isAtTail(contentY, contentHeight, viewHeight, tolerance) {
+    if (contentHeight <= viewHeight) {
+        return true;
+    }
+    return contentY >= contentHeight - viewHeight - tolerance;
+}
+
 /** Aggregate stats over a slice, for the popup header. */
 function stats(slice) {
     var sum = 0, n = 0, lost = 0;

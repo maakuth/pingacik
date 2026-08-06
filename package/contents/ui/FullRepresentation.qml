@@ -119,69 +119,156 @@ PlasmaExtras.Representation {
             opacity: 0.7
         }
 
-        PlasmaComponents.ScrollView {
-            id: logScroll
+        // Wrapper so the "jump to latest" button can sit *over* the list rather
+        // than inside it, where it would scroll away with the content.
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: Kirigami.Units.gridUnit * 5
 
-            contentItem: ListView {
-                id: logView
-                model: full.widget.logModel
-                clip: true
-                reuseItems: true
+            PlasmaComponents.ScrollView {
+                id: logScroll
+                anchors.fill: parent
 
-                // Follow the tail, but stop fighting the user the moment they
-                // scroll back to read something.
-                readonly property bool atTail:
-                    contentY >= contentHeight - height - Kirigami.Units.gridUnit
+                contentItem: ListView {
+                    id: logView
+                    model: full.widget.logModel
+                    clip: true
+                    reuseItems: true
 
-                onCountChanged: if (atTail) { positionViewAtEnd(); }
+                    // Following the newest row is explicit state, deliberately not
+                    // re-derived from the geometry on each append. Deriving it was
+                    // the bug: the widget samples whether or not the popup is open,
+                    // so by the first expand the model already holds hundreds of
+                    // rows. A view created at contentY 0 is nowhere near the tail,
+                    // the check failed on the very first append, and since that was
+                    // the only place it was consulted it never recovered — the log
+                    // opened on a row from minutes ago and sat there.
+                    property bool followTail: true
 
-                delegate: RowLayout {
-                    id: logRow
-                    required property var model
-                    width: logView.width
-                    spacing: Kirigami.Units.largeSpacing
+                    // Set only while we are the ones moving the view, so our own
+                    // scrolling is not mistaken for the user taking over.
+                    property bool selfScrolling: false
 
-                    FigureLabel {
-                        text: Qt.formatTime(new Date(logRow.model.timestamp), "hh:mm:ss")
-                        opacity: 0.55
+                    function jumpToTail() {
+                        selfScrolling = true;
+                        positionViewAtEnd();
+                        selfScrolling = false;
                     }
 
-                    FigureLabel {
-                        Layout.fillWidth: true
-
-                        text: {
-                            if (logRow.model.ok) {
-                                return i18n("reply from %1: %2 ms",
-                                            full.widget.host,
-                                            logRow.model.rtt.toFixed(1));
-                            }
-                            // A packet that simply went unanswered needs no
-                            // explanation. Anything else — no route, no
-                            // permission — would otherwise be indistinguishable
-                            // from ordinary loss, so say what ping said.
-                            return logRow.model.err
-                                ? i18n("%1: %2", full.widget.host, logRow.model.err)
-                                : i18n("no reply from %1", full.widget.host);
-                        }
-
-                        // Same thresholds the state machine uses, so a row's
-                        // colour matches the verdict that sample contributed.
-                        color: {
-                            if (!logRow.model.ok) {
-                                return full.widget.colorCritical;
-                            }
-                            if (logRow.model.rtt > Plasmoid.configuration.redMs) {
-                                return full.widget.colorCritical;
-                            }
-                            if (logRow.model.rtt > Plasmoid.configuration.yellowMs) {
-                                return full.widget.colorWarning;
-                            }
-                            return Kirigami.Theme.textColor;
+                    // Driven from contentY rather than onMovementEnded because that
+                    // is the one thing every way of scrolling has in common:
+                    // dragging the scrollbar moves contentY without ever starting a
+                    // flick, so a movement-based handler would miss it entirely.
+                    // Wheel, drag, flick, scrollbar and keyboard all land here.
+                    //
+                    // isAtTail is called directly rather than read from a bound
+                    // property: a binding on contentY is not guaranteed to have
+                    // been re-evaluated by the time this handler runs, and reading
+                    // the stale value left following switched on after the user had
+                    // scrolled away, so the next row yanked the view back.
+                    onContentYChanged: {
+                        if (!selfScrolling) {
+                            followTail = PingState.isAtTail(
+                                contentY, contentHeight, height,
+                                Kirigami.Units.gridUnit);
                         }
                     }
+
+                    // Deferred so the new row is laid out and contentHeight updated
+                    // before we measure the end; it also coalesces a burst of rows
+                    // into a single scroll.
+                    onCountChanged: if (followTail) { Qt.callLater(jumpToTail); }
+
+                    Component.onCompleted: Qt.callLater(jumpToTail)
+
+                    // Reopening the popup is a fresh look at the connection, so it
+                    // starts following again wherever the view had been left. This
+                    // also absorbs any stray contentY change from while the popup
+                    // was collapsed and this had no meaningful height.
+                    Connections {
+                        target: full.widget
+
+                        function onExpandedChanged() {
+                            if (full.widget.expanded) {
+                                logView.followTail = true;
+                                Qt.callLater(logView.jumpToTail);
+                            }
+                        }
+                    }
+
+                    delegate: RowLayout {
+                        id: logRow
+                        required property var model
+                        width: logView.width
+                        spacing: Kirigami.Units.largeSpacing
+
+                        FigureLabel {
+                            text: Qt.formatTime(new Date(logRow.model.timestamp), "hh:mm:ss")
+                            opacity: 0.55
+                        }
+
+                        FigureLabel {
+                            Layout.fillWidth: true
+
+                            text: {
+                                if (logRow.model.ok) {
+                                    return i18n("reply from %1: %2 ms",
+                                                full.widget.host,
+                                                logRow.model.rtt.toFixed(1));
+                                }
+                                // A packet that simply went unanswered needs no
+                                // explanation. Anything else — no route, no
+                                // permission — would otherwise be indistinguishable
+                                // from ordinary loss, so say what ping said.
+                                return logRow.model.err
+                                    ? i18n("%1: %2", full.widget.host, logRow.model.err)
+                                    : i18n("no reply from %1", full.widget.host);
+                            }
+
+                            // Same thresholds the state machine uses, so a row's
+                            // colour matches the verdict that sample contributed.
+                            color: {
+                                if (!logRow.model.ok) {
+                                    return full.widget.colorCritical;
+                                }
+                                if (logRow.model.rtt > Plasmoid.configuration.redMs) {
+                                    return full.widget.colorCritical;
+                                }
+                                if (logRow.model.rtt > Plasmoid.configuration.yellowMs) {
+                                    return full.widget.colorWarning;
+                                }
+                                return Kirigami.Theme.textColor;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Only offered while following is paused, so the newest result is
+            // one click away instead of a scroll back through the backlog.
+            PlasmaComponents.Button {
+                anchors.right: logScroll.right
+                anchors.bottom: logScroll.bottom
+                anchors.rightMargin: Kirigami.Units.gridUnit
+                anchors.bottomMargin: Kirigami.Units.smallSpacing
+
+                icon.name: "go-bottom"
+                text: i18n("Jump to latest")
+
+                // Must not take focus from the popup, or dismissing it with Esc
+                // stops working while the button is showing.
+                focusPolicy: Qt.NoFocus
+
+                visible: opacity > 0
+                opacity: logView.followTail ? 0 : 1
+                Behavior on opacity {
+                    NumberAnimation { duration: Kirigami.Units.shortDuration }
+                }
+
+                onClicked: {
+                    logView.followTail = true;
+                    logView.jumpToTail();
                 }
             }
         }

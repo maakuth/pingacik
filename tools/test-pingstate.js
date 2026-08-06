@@ -32,6 +32,7 @@ const P = {};
     exports.windowSlice = windowSlice;
     exports.downsample = downsample;
     exports.stats = stats;
+    exports.isAtTail = isAtTail;
 `))(P);
 
 let pass = 0, fail = 0;
@@ -282,6 +283,32 @@ console.log('\nstats');
     const empty = P.stats([]);
     eq('empty avg is -1', empty.avg, -1);
     eq('empty lossPercent is 0', empty.lossPercent, 0);
+}
+
+console.log('\nisAtTail (live log auto-follow)');
+{
+    const TOL = 18;   // roughly one row, as Kirigami.Units.gridUnit is
+    // Nothing to scroll: always at the tail, however the arithmetic lands.
+    check('short content is at the tail', P.isAtTail(0, 100, 150, TOL));
+    check('content exactly filling the view', P.isAtTail(0, 150, 150, TOL));
+
+    // 1000px of content in a 150px view scrolls from 0 to 850.
+    check('scrolled to the bottom', P.isAtTail(850, 1000, 150, TOL));
+    check('within a row of the bottom counts', P.isAtTail(840, 1000, 150, TOL));
+    check('just inside the tolerance', P.isAtTail(832, 1000, 150, TOL));
+    check('just outside the tolerance', !P.isAtTail(831, 1000, 150, TOL));
+    check('scrolled well up is not the tail', !P.isAtTail(400, 1000, 150, TOL));
+    check('at the very top is not the tail', !P.isAtTail(0, 1000, 150, TOL));
+
+    // The regression. The widget samples whether or not the popup is open, so
+    // the first expand finds a full logModel — ~500 rows, 8000px — in a view
+    // created at contentY 0. That view is NOT at the tail, which is exactly why
+    // following has to be explicit state seeded to true rather than something
+    // inferred from the geometry on the first append.
+    check('a fresh view over a full log is not at the tail',
+          !P.isAtTail(0, 8000, 150, TOL));
+    check('...and is once scrolled down to it',
+          P.isAtTail(7850, 8000, 150, TOL));
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

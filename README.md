@@ -95,6 +95,9 @@ comparable.
   the first. The tag lives in the environment rather than the command line (the shell `exec`s ping,
   replacing argv), so `tr '\0' '\n' < /proc/<pid>/environ | grep PINGACIK_ID` on a running `ping` is
   what tells you which instance it belongs to.
+- The live ping log opens on the newest result and keeps scrolling as they arrive. Scroll away and it
+  stops following so it is not moving under you; scroll back to the bottom, or press **Jump to
+  latest**, and it picks up again. Reopening the popup always starts following.
 - A failed ping that failed for a reason *other* than going unanswered — no route, no permission, a
   name that would not resolve — shows what `ping` reported instead of a bare "no reply", so a broken
   setup does not hide inside the packet-loss count.
