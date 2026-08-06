@@ -87,6 +87,17 @@ comparable.
 - Only one ping is ever in flight. The next one is scheduled from when the last one *started*, so a
   reply that took 300 ms is followed 700 ms later — the cadence holds at the configured interval
   instead of drifting, and a stalled link cannot pile up processes.
+- **Every instance measures for itself.** Add the widget twice and you get two independent pings, so
+  N copies watching the same host means N pings per interval. Each instance tags its pings with its
+  own `PINGACIK_ID`, which is what keeps them separate: Plasma's `executable` data engine is shared
+  by every applet and keys its sources by command string, so two widgets issuing an identical
+  command would be handed one shared result — the second would never ping at all, it would mirror
+  the first. The tag lives in the environment rather than the command line (the shell `exec`s ping,
+  replacing argv), so `tr '\0' '\n' < /proc/<pid>/environ | grep PINGACIK_ID` on a running `ping` is
+  what tells you which instance it belongs to.
+- A failed ping that failed for a reason *other* than going unanswered — no route, no permission, a
+  name that would not resolve — shows what `ping` reported instead of a bare "no reply", so a broken
+  setup does not hide inside the packet-loss count.
 - Thresholds are counted in pings, not seconds. While the link is down, an unanswered ping cannot be
   counted until it times out, so the reply timeout is what bounds the sample rate during an outage.
   That is why it defaults to the same value as the interval: raising it makes every threshold below

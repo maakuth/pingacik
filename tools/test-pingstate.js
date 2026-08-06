@@ -19,6 +19,10 @@ const P = {};
     exports.GOOD = GOOD; exports.SLOW_WARNING = SLOW_WARNING;
     exports.SLOW_CRITICAL = SLOW_CRITICAL; exports.LOST = LOST;
     exports.statusName = statusName;
+    exports.makeInstanceToken = makeInstanceToken;
+    exports.shellQuote = shellQuote;
+    exports.buildPingCommand = buildPingCommand;
+    exports.describeFailure = describeFailure;
     exports.parsePingOutput = parsePingOutput;
     exports.classify = classify;
     exports.initialState = initialState;
@@ -40,6 +44,73 @@ function eq(name, actual, expected) {
 }
 
 const CFG = { yellowAfter: 2, redAfter: 5, recoverAfter: 5, yellowMs: 150, redMs: 500 };
+
+// The executable data engine keys its sources by command string and is shared
+// across every applet in plasmashell, so two instances producing the same
+// command means one of them is handed a cached result instead of a real ping.
+// Distinct tokens are what prevent that, which makes these the tests the fix
+// rests on.
+console.log('\nbuildPingCommand (source-name uniqueness)');
+{
+    const a = P.buildPingCommand('8.8.8.8', 1, 'tok1');
+    check('contains the host, quoted', a.includes("'8.8.8.8'"));
+    check('carries the timeout', a.includes('-W 1 '));
+    check('sends exactly one packet', a.includes('-c 1'));
+    check('tagged for /proc/<pid>/environ', a.startsWith('PINGACIK_ID=tok1 '));
+    // The LC_ALL prefix is what forces KProcess to use a shell, which is what
+    // makes the env-var tag safe rather than a stray argument to ping.
+    check('keeps the shell-forcing locale prefix', a.includes('LC_ALL=C ping'));
+
+    // Stable across ticks: the same instance must reuse one source name, or the
+    // engine accumulates a container per ping.
+    eq('same inputs are stable', P.buildPingCommand('8.8.8.8', 1, 'tok1'), a);
+
+    check('another instance on the same host differs',
+          P.buildPingCommand('8.8.8.8', 1, 'tok2') !== a);
+    check('different hosts differ',
+          P.buildPingCommand('1.1.1.1', 1, 'tok1') !== a);
+    check('different timeouts differ',
+          P.buildPingCommand('8.8.8.8', 2, 'tok1') !== a);
+
+    // No two instances watching one host may ever collide.
+    const seen = new Set();
+    for (let i = 0; i < 100; i++) {
+        seen.add(P.buildPingCommand('8.8.8.8', 1, P.makeInstanceToken()));
+    }
+    check('100 instances yield ~100 distinct sources', seen.size >= 99,
+          `got ${seen.size}`);
+
+    // The host is user-supplied and the engine runs the command through a
+    // shell, so a quote in it must not break out of the argument.
+    const evil = P.buildPingCommand("a'b", 1, 'tok');
+    check('quote in host is escaped', evil.endsWith("'a'\\''b'"));
+    eq('shellQuote wraps plainly', P.shellQuote('x'), "'x'");
+}
+
+console.log('\nmakeInstanceToken');
+{
+    const tokens = new Set();
+    for (let i = 0; i < 200; i++) { tokens.add(P.makeInstanceToken()); }
+    check('tokens are distinct', tokens.size >= 199, `got ${tokens.size} of 200`);
+    check('tokens are non-empty', [...tokens].every(t => t.length > 0));
+    // Must survive being pasted into a shell command unquoted.
+    check('tokens are shell-safe', [...tokens].every(t => /^[a-z0-9]+$/.test(t)));
+}
+
+console.log('\ndescribeFailure');
+{
+    // Exit 1 is "sent a packet, heard nothing" — the loss we exist to count.
+    eq('plain timeout needs no explanation', P.describeFailure(1, ''), '');
+    eq('timeout ignores stray stderr', P.describeFailure(1, 'whatever'), '');
+    eq('routing failure is surfaced',
+       P.describeFailure(2, 'connect: Network is unreachable'),
+       'connect: Network is unreachable');
+    eq('only the first useful line',
+       P.describeFailure(2, '\n  ping: bad host  \nsecond line\n'),
+       'ping: bad host');
+    eq('falls back to the exit code', P.describeFailure(127, ''), 'exit 127');
+    eq('missing stderr is tolerated', P.describeFailure(2, undefined), 'exit 2');
+}
 
 console.log('\nparsePingOutput');
 {

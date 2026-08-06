@@ -78,14 +78,18 @@ PlasmoidItem {
     }
 
     // ---- ping plumbing ------------------------------------------------
+    // The command doubles as the data-engine source name, and it carries a
+    // per-instance token for a reason that is invisible without it: the
+    // executable engine keys sources by command string and is shared by every
+    // applet in plasmashell. Two widgets watching the same host would request
+    // the *same* source, and DataEngine::connectSource hands a consumer that
+    // finds an existing source its cached data immediately rather than running
+    // anything. The second widget would then never ping at all — it would
+    // mirror the first, one round stale, so both go Critical together and
+    // neither reading means anything.
+    readonly property string instanceToken: PingState.makeInstanceToken()
     readonly property string pingCommand:
-        "LC_ALL=C ping -n -c 1 -W " + pingTimeout + " " + shellQuote(host)
-
-    // Only ever wraps the user-supplied host, but the executable engine runs
-    // its argument through a shell, so quote it rather than trusting it.
-    function shellQuote(s) {
-        return "'" + String(s).replace(/'/g, "'\\''") + "'";
-    }
+        PingState.buildPingCommand(host, pingTimeout, instanceToken)
 
     property bool busy: false
     property double lastStart: 0
@@ -100,21 +104,27 @@ PlasmoidItem {
         connectedSources: []
 
         onNewData: (sourceName, data) => {
-            // The engine keys sources by command string, and ours never
-            // changes, so it must be disconnected before the next run or no
-            // further data arrives.
+            // The source name never changes, so it has to be disconnected
+            // before the next run or the engine hands back its cached data
+            // instead of running ping again.
             disconnectSource(sourceName);
 
-            // Dropped by the watchdog already: ignore the late arrival rather
-            // than attributing it to whatever request is outstanding now.
-            if (!root.busy) {
+            // Not the request we are waiting on, or already written off by the
+            // watchdog: ignore it rather than attributing it to whatever is
+            // outstanding now.
+            if (!root.busy || sourceName !== root.pingCommand) {
                 return;
             }
             root.busy = false;
             watchdog.stop();
 
-            root.recordSample(PingState.parsePingOutput(
-                data["stdout"], data["exit code"], Date.now()));
+            const sample = PingState.parsePingOutput(
+                data["stdout"], data["exit code"], Date.now());
+            if (!sample.ok) {
+                sample.err = PingState.describeFailure(
+                    data["exit code"], data["stderr"]);
+            }
+            root.recordSample(sample);
             root.scheduleNext();
         }
     }
@@ -180,7 +190,8 @@ PlasmoidItem {
         logModel.append({
             timestamp: sample.t,
             ok: sample.ok,
-            rtt: sample.rtt
+            rtt: sample.rtt,
+            err: sample.err !== undefined ? sample.err : ""
         });
         while (logModel.count > logCap) {
             logModel.remove(0);

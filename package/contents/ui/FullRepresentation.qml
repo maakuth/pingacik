@@ -152,10 +152,20 @@ PlasmaExtras.Representation {
                     FigureLabel {
                         Layout.fillWidth: true
 
-                        text: logRow.model.ok
-                            ? i18n("reply from %1: %2 ms",
-                                   full.widget.host, logRow.model.rtt.toFixed(1))
-                            : i18n("no reply from %1", full.widget.host)
+                        text: {
+                            if (logRow.model.ok) {
+                                return i18n("reply from %1: %2 ms",
+                                            full.widget.host,
+                                            logRow.model.rtt.toFixed(1));
+                            }
+                            // A packet that simply went unanswered needs no
+                            // explanation. Anything else — no route, no
+                            // permission — would otherwise be indistinguishable
+                            // from ordinary loss, so say what ping said.
+                            return logRow.model.err
+                                ? i18n("%1: %2", full.widget.host, logRow.model.err)
+                                : i18n("no reply from %1", full.widget.host);
+                        }
 
                         // Same thresholds the state machine uses, so a row's
                         // colour matches the verdict that sample contributed.
