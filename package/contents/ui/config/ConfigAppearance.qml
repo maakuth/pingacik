@@ -12,7 +12,11 @@ Kirigami.FormLayout {
     property alias cfg_okColor: okColorButton.color
     property alias cfg_warningColor: warningColorButton.color
     property alias cfg_criticalColor: criticalColorButton.color
+    property alias cfg_useCustomBackgroundOpacity: customBackgroundBox.checked
     property int cfg_defaultTimescale
+    // Plain int rather than an alias: the kcfg key is an Int and Slider.value
+    // is a real.
+    property int cfg_backgroundOpacity
 
     QQC2.CheckBox {
         id: showTextBox
@@ -125,6 +129,49 @@ Kirigami.FormLayout {
                     font: Kirigami.Theme.smallFont
                 }
             }
+        }
+    }
+
+    Item { Kirigami.FormData.isSection: true; Kirigami.FormData.label: i18n("Background") }
+
+    QQC2.CheckBox {
+        id: customBackgroundBox
+        Kirigami.FormData.label: i18n("Desktop:")
+        text: i18n("Use custom background opacity")
+    }
+
+    QQC2.Label {
+        Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+        text: i18n("Applies to the widget placed on the desktop. A widget cannot change the background of its own panel popup — that one is drawn by the shell — and panels have their own Opacity setting in panel settings.")
+        font: Kirigami.Theme.smallFont
+        opacity: 0.7
+        wrapMode: Text.WordWrap
+    }
+
+    RowLayout {
+        Kirigami.FormData.label: i18n("Opacity:")
+        spacing: Kirigami.Units.largeSpacing
+
+        QQC2.Slider {
+            id: opacitySlider
+            enabled: customBackgroundBox.checked
+            Layout.minimumWidth: Kirigami.Units.gridUnit * 12
+
+            from: 0
+            to: 100
+            stepSize: 5
+
+            // Written on user movement and loaded once on completion, the same
+            // way timescaleBox does it above. A two-way `value:` binding would
+            // be destroyed the moment dragging assigns value imperatively.
+            onMoved: page.cfg_backgroundOpacity = value
+            Component.onCompleted: value = page.cfg_backgroundOpacity
+        }
+
+        QQC2.Label {
+            enabled: customBackgroundBox.checked
+            text: i18n("%1%", Math.round(opacitySlider.value))
+            font.features: ({ "tnum": 1 })   // stop the width jittering
         }
     }
 }

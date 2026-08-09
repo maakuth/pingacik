@@ -47,6 +47,19 @@
     <entry name="criticalColor" type="Color">
       <default>#da4453</default>
     </entry>
+
+    <!-- Only has any effect on the desktop. In a panel the applet has no
+         background of its own, and the popup's is chosen by the shell from the
+         containment's hints (see CompactApplet.qml), not by the applet. -->
+    <entry name="useCustomBackgroundOpacity" type="Bool">
+      <default>false</default>
+    </entry>
+    <!-- min/max here mean the QML side never has to clamp. -->
+    <entry name="backgroundOpacity" type="Int">
+      <default>60</default>
+      <min>0</min>
+      <max>100</max>
+    </entry>
   </group>
 
   <!-- These keys keep their original names. The user-facing labels are now

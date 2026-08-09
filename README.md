@@ -73,6 +73,18 @@ to pin your own for OK, Warning and Critical; a preview row shows the result bef
 chosen colours are used everywhere — the panel dot, the popup header, the log rows and the
 packet-loss bands on the chart.
 
+**Background** — an opacity for the widget's own background, 0–100%, off by default.
+
+This applies to the widget **placed on the desktop**, where the background belongs to the applet.
+It deliberately does nothing in a panel, and that is not an oversight: a popup's background is chosen
+by the shell from the *containment's* display hints, not the applet's, so no widget can make its own
+popup translucent. For panels, use the panel's own **Opacity** setting (Adaptive / Opaque /
+Translucent), and for popups generally the Plasma Style plus KWin's Blur and Background Contrast
+effects. Plasma itself has no per-widget opacity level anywhere — the nearest native control is a
+binary Show/Hide Background button, which this setting's 0% and 100% ends already cover.
+
+Only the background goes translucent; the text, chart and indicator stay fully opaque on top of it.
+
 **Thresholds** — everything in the table above.
 
 Changing the host, interval or timeout clears the collected history, since it is no longer

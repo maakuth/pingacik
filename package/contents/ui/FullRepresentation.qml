@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
+import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.extras as PlasmaExtras
 import "../code/pingstate.js" as PingState
@@ -20,6 +21,34 @@ PlasmaExtras.Representation {
 
     function formatMs(v) {
         return v >= 0 ? i18n("%1 ms", v.toFixed(1)) : "—";
+    }
+
+    // Only on the desktop, where the background belongs to the applet. In a
+    // panel the popup's background is picked by the shell from the containment's
+    // hints, so there is nothing here for this to act on.
+    readonly property bool customBackground:
+        Plasmoid.formFactor === PlasmaCore.Types.Planar
+        && Plasmoid.configuration.useCustomBackgroundOpacity
+
+    // Representation is a PlasmaComponents.Page, so this fills the whole control
+    // behind both the header and the content. Putting the alpha here rather than
+    // on the item's `opacity` is the point: the surface goes translucent while
+    // the text and chart on top of it stay fully opaque.
+    background: Rectangle {
+        visible: full.customBackground
+        radius: Kirigami.Units.cornerRadius
+
+        color: Qt.rgba(Kirigami.Theme.backgroundColor.r,
+                       Kirigami.Theme.backgroundColor.g,
+                       Kirigami.Theme.backgroundColor.b,
+                       Plasmoid.configuration.backgroundOpacity / 100)
+
+        // A translucent surface over a busy wallpaper needs an edge, or it stops
+        // reading as a surface at all.
+        border.width: 1
+        border.color: Qt.rgba(Kirigami.Theme.textColor.r,
+                              Kirigami.Theme.textColor.g,
+                              Kirigami.Theme.textColor.b, 0.15)
     }
 
     header: PlasmaExtras.PlasmoidHeading {

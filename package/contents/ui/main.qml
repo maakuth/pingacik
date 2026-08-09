@@ -258,6 +258,15 @@ PlasmoidItem {
         widget: root
     }
 
+    // With a custom opacity the shell has to stop drawing its own background,
+    // or ours would sit on top of an opaque themed one and never look
+    // transparent at all. Planar only: in a panel the applet has no background
+    // of its own, and the popup's belongs to the shell.
+    Plasmoid.backgroundHints: (Plasmoid.formFactor === PlasmaCore.Types.Planar
+                               && Plasmoid.configuration.useCustomBackgroundOpacity)
+        ? PlasmaCore.Types.NoBackground
+        : PlasmaCore.Types.DefaultBackground
+
     // Keep the widget visible in the systray overflow while anything is wrong.
     Plasmoid.status: connectionStatus === PingState.OK
         ? PlasmaCore.Types.PassiveStatus
