@@ -23,12 +23,14 @@ PlasmaExtras.Representation {
         return v >= 0 ? i18n("%1 ms", v.toFixed(1)) : "—";
     }
 
+    readonly property bool onDesktop:
+        Plasmoid.formFactor === PlasmaCore.Types.Planar
+
     // Only on the desktop, where the background belongs to the applet. In a
     // panel the popup's background is picked by the shell from the containment's
     // hints, so there is nothing here for this to act on.
     readonly property bool customBackground:
-        Plasmoid.formFactor === PlasmaCore.Types.Planar
-        && Plasmoid.configuration.useCustomBackgroundOpacity
+        onDesktop && Plasmoid.configuration.useCustomBackgroundOpacity
 
     // Representation is a PlasmaComponents.Page, so this fills the whole control
     // behind both the header and the content. Putting the alpha here rather than
@@ -92,6 +94,41 @@ PlasmaExtras.Representation {
                         ? Kirigami.Theme.textColor
                         : full.widget.colorCritical
                     font.features: ({ "tnum": 1 })
+                }
+
+                // Desktop only. Plasma 6 gives widgets on the desktop no
+                // right-click menu of their own — the handles that carry the
+                // wrench appear only after a press and hold, and over the
+                // scrollable log below that press is unreliable. In a panel this
+                // is unnecessary, since right-clicking the icon already offers
+                // Configure, and the header there is tight enough already.
+                PlasmaComponents.ToolButton {
+                    id: configureButton
+                    visible: full.onDesktop && Plasmoid.hasConfigurationInterface
+
+                    icon.name: "configure"
+                    icon.width: Kirigami.Units.iconSizes.small
+                    icon.height: Kirigami.Units.iconSizes.small
+                    display: PlasmaComponents.ToolButton.IconOnly
+                    flat: true
+
+                    // Must not take focus, or Esc stops dismissing the popup.
+                    focusPolicy: Qt.NoFocus
+
+                    text: i18n("Configure Pingacik…")
+                    PlasmaComponents.ToolTip { text: configureButton.text }
+
+                    onClicked: {
+                        const action = Plasmoid.internalAction("configure");
+                        if (!action) {
+                            return;
+                        }
+                        // The action can arrive disabled, and QAction::trigger()
+                        // is a silent no-op while it is — Plasma's own
+                        // ConfigOverlay force-enables it for the same reason.
+                        action.enabled = true;
+                        action.trigger();
+                    }
                 }
             }
 

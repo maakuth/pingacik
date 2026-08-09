@@ -60,7 +60,15 @@ RTT spike is ignored while a sustained slowdown ramps OK → Warning → Critica
 
 ## Settings
 
-Right-click the widget → **Configure Pingacik…**
+**In a panel:** right-click the widget → **Configure Pingacik…**
+
+**On the desktop:** click the gear in the widget's own header. Plasma 6 gives widgets on the desktop
+no right-click menu of their own, so without that button there is no way in — the handles that carry
+the usual wrench appear only after a *press and hold* on the widget, and over the scrollable log that
+press often goes to the list instead.
+
+Press-and-hold is still the only way to **move or resize** a desktop widget: hold until the handles
+appear, or right-click the desktop → **Enter Edit Mode**, which shows handles for everything at once.
 
 **General** — target host (default `8.8.8.8`), ping interval and reply timeout.
 
