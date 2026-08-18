@@ -267,10 +267,12 @@ PlasmoidItem {
         ? PlasmaCore.Types.NoBackground
         : PlasmaCore.Types.DefaultBackground
 
-    // Keep the widget visible in the systray overflow while anything is wrong.
-    Plasmoid.status: connectionStatus === PingState.OK
-        ? PlasmaCore.Types.PassiveStatus
-        : PlasmaCore.Types.ActiveStatus
+    // TEST ONLY — pinned to ActiveStatus to isolate whether the shell moves
+    // the whole applet when Plasmoid.status changes. With clip:true on the
+    // compact view the dot cannot paint outside the applet anymore, so if it
+    // still "appears over other widgets" the slot itself is being relocated,
+    // and this flip is the only candidate. Revert once tested.
+    Plasmoid.status: PlasmaCore.Types.ActiveStatus
 
     toolTipMainText: i18n("%1: %2", host, statusText)
     toolTipSubText: {
