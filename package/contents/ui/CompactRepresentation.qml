@@ -27,22 +27,33 @@ MouseArea {
     readonly property bool showText:
         Plasmoid.configuration.showLatencyText && !vertical
 
-    Layout.minimumWidth: vertical ? 0 : layout.implicitWidth
-    Layout.minimumHeight: vertical ? layout.implicitHeight : 0
-    Layout.preferredWidth: Layout.minimumWidth
-    Layout.preferredHeight: Layout.minimumHeight
+    // The panel imposes the cross dimension, so the applet only ever asks for
+    // room along its own axis and can always shrink: the label elides instead
+    // of the row spilling past the slot the panel actually granted.
+    Layout.minimumWidth: 0
+    Layout.minimumHeight: 0
+    Layout.preferredWidth: vertical ? -1 : layout.implicitWidth
+    Layout.preferredHeight: vertical ? layout.implicitHeight : -1
 
     acceptedButtons: Qt.LeftButton
     onClicked: widget.expanded = !widget.expanded
 
     RowLayout {
         id: layout
-        anchors.centerIn: parent
+        // Fill the slot rather than centring a content-sized row in it:
+        // centring pins the dot to the row's left edge, so its position rides
+        // the readout's width as the text changes between samples — which is
+        // how the blob ended up somewhere else on a timeout. Filling keeps the
+        // dot anchored to the slot itself; the label takes the slack and elides.
+        anchors.fill: parent
         spacing: Kirigami.Units.smallSpacing
 
         StatusDot {
             id: dot
-            Layout.alignment: Qt.AlignVCenter
+            // Horizontal: the row's left edge, vertically centred. Vertical:
+            // the only child, filling the width and centring itself within it.
+            Layout.alignment: compact.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            Layout.fillWidth: compact.vertical
             statusColor: compact.widget.statusColor
             pulsing: compact.widget.connectionStatus !== PingState.OK
 
@@ -56,6 +67,7 @@ MouseArea {
         PlasmaComponents.Label {
             id: label
             Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true
             visible: compact.showText
 
             text: {
