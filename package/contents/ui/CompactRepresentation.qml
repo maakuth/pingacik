@@ -12,6 +12,11 @@ MouseArea {
     // The root PlasmoidItem, injected by main.qml.
     required property var widget
 
+    // Nothing inside may ever paint outside the slot the panel granted. This
+    // is the guarantee that a squeezed applet cannot spill its dot over the
+    // neighbouring widgets, whatever the cause.
+    clip: true
+
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
 
     // A vertical panel has no room beside the dot, so the readout only makes
@@ -54,6 +59,13 @@ MouseArea {
             // the only child, filling the width and centring itself within it.
             Layout.alignment: compact.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             Layout.fillWidth: compact.vertical
+            // Without this the dot's minimum width defaults to its implicit
+            // width, so a panel that squeezes the applet below the dot's size
+            // has nowhere to shrink it and the dot spills over the neighbours.
+            // Allowing it to shrink (with clip on the applet as the backstop)
+            // keeps it inside its own slot.
+            Layout.minimumWidth: 0
+            Layout.minimumHeight: 0
             statusColor: compact.widget.statusColor
             pulsing: compact.widget.connectionStatus !== PingState.OK
 
